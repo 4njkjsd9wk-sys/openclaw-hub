@@ -1,40 +1,63 @@
-name: OpenClaw Agent Hub Bot
+name: Telegram Bot Runner
 on:
   schedule:
-    - cron: '*/5 * * * *'  # 每5分钟运行一次
-  workflow_dispatch:  # 手动触发
+    - cron: "*/3 * * * *"
+  workflow_dispatch:
 
 jobs:
   bot:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-      - name: Install dependencies
+          python-version: "3.11"
+      - name: Install deps
         run: pip install python-telegram-bot python-dotenv
-      - name: Run bot polling
+      - name: Run Bot
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         run: |
           python3 -c "
-          import os, asyncio, sys
+          import os, asyncio, sys, json
           sys.path.insert(0, '.')
           from telegram import Bot, Update
-          from telegram.ext import Application, CommandHandler
+          from telegram.ext import Application, CommandHandler, ContextTypes
           
           TOKEN = os.environ['TELEGRAM_BOT_TOKEN']
           
-          async def start(u, c): await u.message.reply_text('OpenClaw Agent Hub /tcm /sandpump /agents')
-          async def tcm(u, c):
+          async def start(u: Update, c): 
+              await u.message.reply_text('🤖 OpenClaw Agent Hub
+
+📚 /tcm 倪李中医知识库 (554篇/3110万字)
+🏗️ /sandpump 非洲沙泵情报
+📋 /agents 状态面板')
+          
+          async def tcm(u: Update, c):
               q = ' '.join(c.args) if c.args else '桂枝汤'
-              await u.message.reply_text(f'📚 倪李中医查询: {q}\n\n知识库 554篇/3110万字就绪\n@openclaw_hub_bot')
-          async def sandpump(u, c):
+              await u.message.reply_text(f'📚 倪李中医查询: {q}
+
+知识库就绪: 倪海厦503篇 + 李可49篇 = 3110万字
+涵盖伤寒金匮本草针灸全体系
+
+完整查询请使用飞书/Dify平台')
+          
+          async def sandpump(u: Update, c):
               q = ' '.join(c.args) if c.args else '非洲'
-              await u.message.reply_text(f'🏗️ 沙泵情报查询: {q}\n\n情报系统就绪\n@openclaw_hub_bot')
-          async def agents_cmd(u, c):
-              await u.message.reply_text('📋 OpenClaw Agent Hub\n🏥 倪李中医: 🟢\n🏗️ 非洲沙泵: 🟢\n🔧 空压巡检: 🟡')
+              await u.message.reply_text(f'🏗️ 非洲沙泵情报: {q}
+
+情报系统就绪
+对接玉柴260柴油机+沙泵组合
+目标市场: 加纳/马里/尼日利亚/布基纳法索')
+          
+          async def agents_cmd(u: Update, c):
+              await u.message.reply_text('📋 OpenClaw Agent Hub 状态
+
+🏥 倪李中医: 🟢 554篇/3110万字
+🏗️ 非洲沙泵: 🟢 7份情报文件
+🔧 空压巡检: 🟡 待开发
+🤖 Telegram Bot: 🟢 运行中')
           
           app = Application.builder().token(TOKEN).build()
           app.add_handler(CommandHandler('start', start))
@@ -42,14 +65,13 @@ jobs:
           app.add_handler(CommandHandler('sandpump', sandpump))
           app.add_handler(CommandHandler('agents', agents_cmd))
           
-          # 运行30秒处理积压消息
-          async def run():
+          async def main():
               await app.initialize()
               await app.start()
-              await app.updater.start_polling(poll_interval=1.0)
-              await asyncio.sleep(30)
+              await app.updater.start_polling(poll_interval=1.0, timeout=30)
+              await asyncio.sleep(120)
               await app.updater.stop()
               await app.stop()
           
-          asyncio.run(run())
+          asyncio.run(main())
           "
