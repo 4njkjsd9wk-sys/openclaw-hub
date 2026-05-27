@@ -1,11 +1,11 @@
-name: Telegram Bot Runner
+name: Bot
 on:
   schedule:
     - cron: "*/3 * * * *"
   workflow_dispatch:
 
 jobs:
-  bot:
+  run:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -13,65 +13,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Install deps
-        run: pip install python-telegram-bot python-dotenv
-      - name: Run Bot
+      - run: pip install python-telegram-bot python-dotenv
+      - name: Poll
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-        run: |
-          python3 -c "
-          import os, asyncio, sys, json
-          sys.path.insert(0, '.')
-          from telegram import Bot, Update
-          from telegram.ext import Application, CommandHandler, ContextTypes
-          
-          TOKEN = os.environ['TELEGRAM_BOT_TOKEN']
-          
-          async def start(u: Update, c): 
-              await u.message.reply_text('🤖 OpenClaw Agent Hub
-
-📚 /tcm 倪李中医知识库 (554篇/3110万字)
-🏗️ /sandpump 非洲沙泵情报
-📋 /agents 状态面板')
-          
-          async def tcm(u: Update, c):
-              q = ' '.join(c.args) if c.args else '桂枝汤'
-              await u.message.reply_text(f'📚 倪李中医查询: {q}
-
-知识库就绪: 倪海厦503篇 + 李可49篇 = 3110万字
-涵盖伤寒金匮本草针灸全体系
-
-完整查询请使用飞书/Dify平台')
-          
-          async def sandpump(u: Update, c):
-              q = ' '.join(c.args) if c.args else '非洲'
-              await u.message.reply_text(f'🏗️ 非洲沙泵情报: {q}
-
-情报系统就绪
-对接玉柴260柴油机+沙泵组合
-目标市场: 加纳/马里/尼日利亚/布基纳法索')
-          
-          async def agents_cmd(u: Update, c):
-              await u.message.reply_text('📋 OpenClaw Agent Hub 状态
-
-🏥 倪李中医: 🟢 554篇/3110万字
-🏗️ 非洲沙泵: 🟢 7份情报文件
-🔧 空压巡检: 🟡 待开发
-🤖 Telegram Bot: 🟢 运行中')
-          
-          app = Application.builder().token(TOKEN).build()
-          app.add_handler(CommandHandler('start', start))
-          app.add_handler(CommandHandler('tcm', tcm))
-          app.add_handler(CommandHandler('sandpump', sandpump))
-          app.add_handler(CommandHandler('agents', agents_cmd))
-          
-          async def main():
-              await app.initialize()
-              await app.start()
-              await app.updater.start_polling(poll_interval=1.0, timeout=30)
-              await asyncio.sleep(120)
-              await app.updater.stop()
-              await app.stop()
-          
-          asyncio.run(main())
-          "
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: python3 bot.py
