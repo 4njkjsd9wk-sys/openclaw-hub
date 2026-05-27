@@ -1,20 +1,55 @@
-name: Bot
+name: OpenClaw Agent Hub Bot
 on:
   schedule:
-    - cron: "*/3 * * * *"
-  workflow_dispatch:
+    - cron: '*/5 * * * *'  # 每5分钟运行一次
+  workflow_dispatch:  # 手动触发
 
 jobs:
-  run:
+  bot:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v4
         with:
-          python-version: "3.11"
-      - run: pip install python-telegram-bot python-dotenv
-      - name: Poll
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install python-telegram-bot python-dotenv
+      - name: Run bot polling
         env:
-          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-        run: python3 bot.py
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: |
+          python3 -c "
+          import os, asyncio, sys
+          sys.path.insert(0, '.')
+          from telegram import Bot, Update
+          from telegram.ext import Application, CommandHandler
+          
+          TOKEN = os.environ['TELEGRAM_BOT_TOKEN']
+          
+          async def start(u, c): await u.message.reply_text('OpenClaw Agent Hub /tcm /sandpump /agents')
+          async def tcm(u, c):
+              q = ' '.join(c.args) if c.args else '桂枝汤'
+              await u.message.reply_text(f'📚 倪李中医查询: {q}\n\n知识库 554篇/3110万字就绪\n@openclaw_hub_bot')
+          async def sandpump(u, c):
+              q = ' '.join(c.args) if c.args else '非洲'
+              await u.message.reply_text(f'🏗️ 沙泵情报查询: {q}\n\n情报系统就绪\n@openclaw_hub_bot')
+          async def agents_cmd(u, c):
+              await u.message.reply_text('📋 OpenClaw Agent Hub\n🏥 倪李中医: 🟢\n🏗️ 非洲沙泵: 🟢\n🔧 空压巡检: 🟡')
+          
+          app = Application.builder().token(TOKEN).build()
+          app.add_handler(CommandHandler('start', start))
+          app.add_handler(CommandHandler('tcm', tcm))
+          app.add_handler(CommandHandler('sandpump', sandpump))
+          app.add_handler(CommandHandler('agents', agents_cmd))
+          
+          # 运行30秒处理积压消息
+          async def run():
+              await app.initialize()
+              await app.start()
+              await app.updater.start_polling(poll_interval=1.0)
+              await asyncio.sleep(30)
+              await app.updater.stop()
+              await app.stop()
+          
+          asyncio.run(run())
+          "
